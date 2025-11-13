@@ -1,69 +1,54 @@
-name: E2E (Cypress)
+name: E2E Cypress Tests
 
 on:
   push:
-    paths:
-      - "server/**"
-      - "web/**"
-      - ".github/workflows/e2e-cypress.yml"
+    branches: [ main ]
   pull_request:
-    paths:
-      - "server/**"
-      - "web/**"
-      - ".github/workflows/e2e-cypress.yml"
+    branches: [ main ]
 
 jobs:
-  e2e:
+  cypress-run:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: 22
 
-      - name: Install backend deps
+      # Backend
+      - name: Install backend dependencies
         working-directory: server
         run: npm ci
 
-      - name: Install frontend deps
+      - name: Start backend
+        working-directory: server
+        run: npm start &
+      
+      # Frontend
+      - name: Install frontend dependencies
         working-directory: web
         run: npm ci
 
-      - name: Start API
-        working-directory: server
-        env:
-          PORT: "4000"
-          DATABASE_PATH: "${{ github.workspace }}/server/data/e2e.db"
-        run: |
-          npm start &
-          echo "Waiting for API..."
-          npx wait-on --timeout 20000 tcp:4000 || (echo "API did not start" && exit 1)
-
-      - name: Build web
+      - name: Start frontend
         working-directory: web
-        run: npm run build
+        run: npm run dev &
 
-      - name: Preview web (5173)
-        working-directory: web
-        env:
-          VITE_API_URL: "http://localhost:4000"
+      # Esperar que os serviços estejam no ar
+      - name: Install wait-on
+        run: npm install -g wait-on
+
+      - name: Wait for backend and frontend
         run: |
-          npx vite preview --host --port 5173 &
-          echo "Waiting for web..."
-          npx wait-on --timeout 20000 http://localhost:5173 || (echo "Web did not start" && exit 1)
+          wait-on http://localhost:4000/ping
+          wait-on http://localhost:5173
 
-      - name: Cypress run
-        uses: cypress-io/github-action@v6
-        with:
-          working-directory: web
-          browser: chrome
-          config: baseUrl=http://localhost:5173
-          env: apiUrl=http://localhost:4000
-        env:
-          # Needed for Chrome in some CI environments
-          CYPRESS_INSTALL_BINARY: "0"
+      # Correr Cypress
+      - name: Run Cypress tests
+      # corre na pasta web, onde está cypress/e2e/test.cy.js
+        working-directory: web
+        run: npx cypress run --config baseUrl=http://localhost:5173 --env apiUrl=http://localhost:4000
+
