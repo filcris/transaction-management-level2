@@ -1,186 +1,177 @@
 import React, { useState } from "react";
-import { createRoot } from "react-dom/client";
+import ReactDOM from "react-dom/client";
 import "./styles.css";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL =
+  import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL.trim() !== ""
+    ? import.meta.env.VITE_API_URL
+    : "http://localhost:4000";
 
 function App() {
   const [accountId, setAccountId] = useState("");
   const [amount, setAmount] = useState("");
   const [transactions, setTransactions] = useState([]);
   const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
 
-    if (!API_URL) {
-      setError({
-        error: "CONFIG_ERROR",
-        message: "VITE_API_URL is not defined. Please set it in web/.env",
-      });
-      return;
+    // Não bloquear o envio — deixamos o backend validar.
+    // Mas convertemos para number apenas se for claramente numérico.
+    let bodyAmount;
+    const parsed = Number(amount);
+    if (!Number.isFinite(parsed)) {
+      // mantém string para o caso inválido (ex: "abc")
+      bodyAmount = amount;
+    } else {
+      bodyAmount = parsed;
     }
 
-    const amtNum = Number(amount);
+    const payload = {
+      account_id: accountId,
+      amount: bodyAmount,
+    };
 
+    setSubmitting(true);
     try {
+      // 1) Criar transação
       const res = await fetch(`${API_URL}/transactions`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          account_id: accountId,
-          amount: amtNum,
-        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        setError(data);
+        // Erros de validação NÃO devem criar histórico (Cypress espera isso)
+        let details = null;
+        try {
+          details = await res.json();
+        } catch {
+          // ignore
+        }
+        setError(
+          details?.error === "INVALID_INPUT"
+            ? "Invalid input. Please check account_id and amount."
+            : "Something went wrong creating the transaction."
+        );
         return;
       }
 
-      // buscar saldo atualizado
-      const balRes = await fetch(`${API_URL}/accounts/${accountId}`);
-      const balData = await balRes.json();
+      const data = await res.json();
+      const transactionId = data.transaction_id;
+      const accId = data.account_id;
+      const txAmount = data.amount;
 
-      const newTx = {
-        transaction_id: data.transaction_id,
-        account_id: accountId,
-        amount: amtNum,
-        balance: balData.balance,
-      };
+      // 2) Buscar saldo atualizado
+      const balanceRes = await fetch(`${API_URL}/accounts/${accId}`);
+      const balanceData = await balanceRes.json();
 
-      // adiciona a nova transação no topo
-      setTransactions((prev) => [newTx, ...prev]);
+      const balance = balanceData.balance;
 
-      // MUITO IMPORTANTE PARA O CYPRESS:
-      // limpar campos depois de submit
+      // 3) Atualizar histórico (novo primeiro)
+      setTransactions((prev) => [
+        {
+          id: transactionId,
+          account_id: accId,
+          amount: txAmount,
+          balance,
+          created_at: data.created_at,
+        },
+        ...prev,
+      ]);
+
+      // limpar só o amount (o Cypress escreve o accountId outra vez)
       setAmount("");
       setAccountId("");
     } catch (err) {
-      setError({
-        error: "NETWORK_ERROR",
-        message: err.message,
-      });
+      console.error(err);
+      setError("Network error while creating transaction.");
+    } finally {
+      setSubmitting(false);
     }
   }
 
   return (
     <div className="app">
-      <div className="window">
-        <h1 className="window__title">Transaction Manager</h1>
+      <h1>Transaction Management</h1>
 
-        {/* FORM */}
-        <form onSubmit={handleSubmit} className="card">
-          <div className="card__title">New Transaction</div>
+      <form className="tx-form" onSubmit={handleSubmit}>
+        <div className="field">
+          <label>Account ID</label>
+          <input
+            type="text"
+            value={accountId}
+            onChange={(e) => setAccountId(e.target.value)}
+            data-type="account-id"
+            placeholder="UUID"
+          />
+        </div>
 
-          <label className="label">
-            Account ID
-            <input
-              className="input"
-              data-type="account-id"
-              value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
-              placeholder="UUID"
-            />
-          </label>
+        <div className="field">
+          <label>Amount</label>
+          <input
+            type="text"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            data-type="amount"
+            placeholder="e.g. 30 or -5"
+          />
+        </div>
 
-          <label className="label">
-            Amount
-            <input
-              className="input"
-              data-type="amount"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="e.g. 15 or -3"
-            />
-          </label>
+        <button
+          type="submit"
+          data-type="transaction-submit"
+          disabled={submitting}
+        >
+          {submitting ? "Saving..." : "Add transaction"}
+        </button>
+      </form>
 
-          <div className="row">
-            <button className="btn" data-type="transaction-submit">
-              Submit
-            </button>
-          </div>
+      {error && <div className="error-banner">{error}</div>}
 
-          {error && (
-            <div className="error">
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                Something went wrong
-              </div>
-              <div style={{ fontSize: 11, marginBottom: 2 }}>
-                {error.error}
-              </div>
-              {error.message && (
-                <div style={{ fontSize: 11 }}>{error.message}</div>
-              )}
+      <section className="tx-history">
+        <h2>Transactions</h2>
+        {transactions.length === 0 && (
+          <p className="empty">No transactions yet.</p>
+        )}
 
-              <details style={{ marginTop: 6 }}>
-                <summary style={{ cursor: "pointer" }}>
-                  Technical details
-                </summary>
-                <pre style={{ margin: 0, fontSize: 10 }}>
-                  {JSON.stringify(error, null, 2)}
-                </pre>
-              </details>
-            </div>
-          )}
-        </form>
-
-        {/* HISTORY */}
-        <div className="card" style={{ marginTop: 20 }}>
-          <div className="card__title">
-            Transaction History{" "}
-            <span className="history__badge">{transactions.length}</span>
-          </div>
-
-          {transactions.length === 0 && (
-            <p className="helper">No transactions yet</p>
-          )}
-
+        <ul className="tx-list">
           {transactions.map((tx) => (
-            <div
-              key={tx.transaction_id}
-              className={`tx ${
-                tx.amount >= 0 ? "tx--deposit" : "tx--withdraw"
-              }`}
+            <li
+              key={tx.id}
+              className="tx-item"
               data-type="transaction"
               data-account-id={tx.account_id}
               data-amount={tx.amount}
               data-balance={tx.balance}
             >
-              <div className="tx__tag">
-                {tx.amount >= 0 ? "Deposit" : "Withdraw"}
+              <div className="tx-main">
+                <span className="tx-account">{tx.account_id}</span>
+                <span className="tx-amount">Amount: {tx.amount}</span>
+                <span className="tx-balance">Balance: {tx.balance}</span>
               </div>
-
-              <div style={{ fontSize: 13 }}>
-                <strong>Amount:</strong>{" "}
-                <span className="amountBox">{tx.amount}</span>
-              </div>
-
-              <div
-                style={{
-                  marginTop: 4,
-                  fontSize: 12,
-                }}
-                className={tx.balance >= 0 ? "balance--pos" : "balance--neg"}
-              >
-                Balance: {tx.balance}
-              </div>
-
-              <div style={{ fontSize: 10, opacity: 0.7, marginTop: 4 }}>
-                {tx.transaction_id}
-              </div>
-            </div>
+              {tx.created_at && (
+                <div className="tx-meta">Created at: {tx.created_at}</div>
+              )}
+            </li>
           ))}
-        </div>
-      </div>
+        </ul>
+      </section>
     </div>
   );
 }
 
-createRoot(document.getElementById("root")).render(<App />);
+const rootElement = document.getElementById("root");
+ReactDOM.createRoot(rootElement).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
 
 
 
