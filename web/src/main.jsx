@@ -18,12 +18,10 @@ function App() {
     e.preventDefault();
     setError(null);
 
-    // Não bloquear o envio — deixamos o backend validar.
-    // Mas convertemos para number apenas se for claramente numérico.
+    // amount -> número se possível, string se inválido (para o teste da validação)
     let bodyAmount;
     const parsed = Number(amount);
     if (!Number.isFinite(parsed)) {
-      // mantém string para o caso inválido (ex: "abc")
       bodyAmount = amount;
     } else {
       bodyAmount = parsed;
@@ -36,28 +34,26 @@ function App() {
 
     setSubmitting(true);
     try {
-      // 1) Criar transação
+      // 1) criar transação
       const res = await fetch(`${API_URL}/transactions`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
-        // Erros de validação NÃO devem criar histórico (Cypress espera isso)
         let details = null;
         try {
           details = await res.json();
         } catch {
-          // ignore
+          /* ignore */
         }
-        setError(
-          details?.error === "INVALID_INPUT"
-            ? "Invalid input. Please check account_id and amount."
-            : "Something went wrong creating the transaction."
-        );
+
+        if (details?.error === "INVALID_INPUT") {
+          setError("Invalid input. Please check Account ID and Amount.");
+        } else {
+          setError("Something went wrong while creating transaction.");
+        }
         return;
       }
 
@@ -66,13 +62,12 @@ function App() {
       const accId = data.account_id;
       const txAmount = data.amount;
 
-      // 2) Buscar saldo atualizado
+      // 2) saldo atual dessa conta
       const balanceRes = await fetch(`${API_URL}/accounts/${accId}`);
       const balanceData = await balanceRes.json();
-
       const balance = balanceData.balance;
 
-      // 3) Atualizar histórico (novo primeiro)
+      // 3) nova transação no TOPO da lista
       setTransactions((prev) => [
         {
           id: transactionId,
@@ -84,9 +79,10 @@ function App() {
         ...prev,
       ]);
 
-      // limpar só o amount (o Cypress escreve o accountId outra vez)
-      setAmount("");
+      // limpar inputs (obrigatório pelo enunciado)
       setAccountId("");
+      setAmount("");
+      setError(null);
     } catch (err) {
       console.error(err);
       setError("Network error while creating transaction.");
@@ -96,81 +92,111 @@ function App() {
   }
 
   return (
-    <div className="app">
-      <h1>Transaction Management</h1>
+    <div className="app-shell">
+      <h1 className="app-title">Transaction Management</h1>
 
-      <form className="tx-form" onSubmit={handleSubmit}>
-        <div className="field">
-          <label>Account ID</label>
-          <input
-            type="text"
-            value={accountId}
-            onChange={(e) => setAccountId(e.target.value)}
-            data-type="account-id"
-            placeholder="UUID"
-          />
-        </div>
+      <div className="layout">
+        {/* FORMULÁRIO (esquerda) */}
+        <section className="panel panel-form">
+          <h2 className="panel-heading">Submit new transaction</h2>
 
-        <div className="field">
-          <label>Amount</label>
-          <input
-            type="text"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            data-type="amount"
-            placeholder="e.g. 30 or -5"
-          />
-        </div>
+          {/* ⚠️ Estrutura EXACTA pedida no enunciado */}
+          <form onSubmit={handleSubmit} className="tx-form">
+            <div className="field-group">
+              <label htmlFor="account-id">Account ID:</label>
+              <input
+                id="account-id"
+                type="text"
+                placeholder="Account UUID"
+                value={accountId}
+                onChange={(e) => setAccountId(e.target.value)}
+                data-type="account-id"
+              />
+            </div>
 
-        <button
-          type="submit"
-          data-type="transaction-submit"
-          disabled={submitting}
-        >
-          {submitting ? "Saving..." : "Add transaction"}
-        </button>
-      </form>
+            <div className="field-group">
+              <label htmlFor="amount">Amount:</label>
+              <input
+                id="amount"
+                type="text"
+                placeholder="e.g. 30 or -5"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                data-type="amount"
+              />
+            </div>
 
-      {error && <div className="error-banner">{error}</div>}
+            <div className="submit-wrapper">
+              <input
+                type="submit"
+                value={submitting ? "Submitting..." : "Submit"}
+                data-type="transaction-submit"
+                disabled={submitting}
+              />
+            </div>
+          </form>
 
-      <section className="tx-history">
-        <h2>Transactions</h2>
-        {transactions.length === 0 && (
-          <p className="empty">No transactions yet.</p>
-        )}
+          {error && (
+            <div className="error-box">
+              <strong>Something went wrong</strong>
+              <div>{error}</div>
+            </div>
+          )}
+        </section>
 
-        <ul className="tx-list">
-          {transactions.map((tx) => (
-            <li
-              key={tx.id}
-              className="tx-item"
-              data-type="transaction"
-              data-account-id={tx.account_id}
-              data-amount={tx.amount}
-              data-balance={tx.balance}
-            >
-              <div className="tx-main">
-                <span className="tx-account">{tx.account_id}</span>
-                <span className="tx-amount">Amount: {tx.amount}</span>
-                <span className="tx-balance">Balance: {tx.balance}</span>
-              </div>
-              {tx.created_at && (
-                <div className="tx-meta">Created at: {tx.created_at}</div>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
+        {/* LISTA DE TRANSAÇÕES (direita) */}
+        <section className="panel panel-history">
+          <h2 className="panel-heading">Transaction history</h2>
+
+          {transactions.length === 0 ? (
+            <p className="empty-state">No transactions yet.</p>
+          ) : (
+            <div className="tx-list">
+              {transactions.map((tx) => (
+                <div
+                  key={tx.id}
+                  className="tx-item"
+                  data-type="transaction"
+                  data-account-id={tx.account_id}
+                  data-amount={tx.amount}
+                  data-balance={tx.balance}
+                >
+                  <div className="tx-line">
+                    Transferred{" "}
+                    <span
+                      className={
+                        "tx-amount " +
+                        (tx.amount >= 0
+                          ? "tx-amount-deposit"
+                          : "tx-amount-withdraw")
+                      }
+                    >
+                      {tx.amount}
+                    </span>{" "}
+                    {tx.amount >= 0 ? "to" : "from"} account{" "}
+                    <span className="tx-account">{tx.account_id}</span>
+                  </div>
+                  <div className="tx-balance">
+                    The current account balance is{" "}
+                    <span className="tx-balance-value">{tx.balance}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
 
-const rootElement = document.getElementById("root");
-ReactDOM.createRoot(rootElement).render(
+ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <App />
   </React.StrictMode>
 );
+
+
 
 
 

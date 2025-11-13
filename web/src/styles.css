@@ -1,4 +1,4 @@
-/* Layout base */
+/* === GLOBAL === */
 *,
 *::before,
 *::after {
@@ -7,207 +7,177 @@
 
 body {
   margin: 0;
+  padding: 30px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: radial-gradient(circle at top left, #111827, #020617 55%, #000 100%);
-  color: #e5e7eb;
+  background: #f7f7f7;
+  color: #222;
 }
 
-.app {
-  min-height: 100vh;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 32px 16px;
+/* === APP SHELL === */
+.app-shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  background: #ffffff;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 24px 28px 32px;
+  box-shadow: 0 0 16px rgba(0, 0, 0, 0.07);
 }
 
-.window {
-  width: 100%;
-  max-width: 1080px;
-  background: rgba(15, 23, 42, 0.96);
-  border-radius: 18px;
-  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.9);
-  padding: 24px 24px 28px;
-  border: 1px solid rgba(148, 163, 184, 0.3);
-}
-
-.window__title {
+.app-title {
   margin: 0 0 20px;
-  font-size: 22px;
+  font-size: 1.9rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
-  color: #e5e7eb;
 }
 
-/* Grid responsivo */
-.grid {
+/* === LAYOUT 2 COLUNAS === */
+.layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.1fr);
-  gap: 20px;
+  grid-template-columns: 1.1fr 1.2fr;
+  gap: 24px;
 }
 
-@media (max-width: 840px) {
-  .grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .app {
-    padding-top: 16px;
+/* Responsivo */
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
   }
 }
 
-/* Cards */
-.card {
-  background: radial-gradient(circle at top, #020617, #020617 40%, #020617 100%);
-  border-radius: 16px;
-  padding: 18px 18px 16px;
-  border: 1px solid rgba(148, 163, 184, 0.45);
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.8);
+/* === PAINÉIS === */
+.panel {
+  border: 2px solid #e5b4b4;
+  border-radius: 6px;
+  padding: 18px 20px 20px;
+  background: #fffdfb;
 }
 
-.card__title {
-  font-size: 16px;
+.panel-heading {
+  margin: 0 0 16px;
+  font-size: 1.1rem;
   font-weight: 600;
+}
+
+/* === FORM === */
+
+.tx-form {
+  border: 2px solid #f3d1d1;
+  padding: 16px 18px 22px;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.field-group {
   margin-bottom: 14px;
 }
 
-/* Form */
-.label {
+.field-group label {
   display: block;
-  font-size: 13px;
-  margin-bottom: 4px;
-  color: #9ca3af;
-}
-
-.input {
-  width: 100%;
-  padding: 9px 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.6);
-  background: rgba(15, 23, 42, 0.9);
-  color: #e5e7eb;
-  font-size: 13px;
-  outline: none;
-  transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
-  margin-bottom: 10px;
-}
-
-.input::placeholder {
-  color: #6b7280;
-  font-size: 12px;
-}
-
-.input:focus {
-  border-color: #38bdf8;
-  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.4);
-  background: rgba(15, 23, 42, 1);
-}
-
-/* Buttons */
-.row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.btn {
-  border: none;
-  border-radius: 999px;
-  padding: 7px 14px;
-  font-size: 13px;
-  cursor: pointer;
-  background: linear-gradient(to right, #0ea5e9, #22c55e);
-  color: white;
+  margin-bottom: 6px;
   font-weight: 500;
-  box-shadow: 0 12px 26px rgba(16, 185, 129, 0.35);
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
 }
 
-.btn:hover {
-  transform: translateY(-1px);
-  filter: brightness(1.05);
-  box-shadow: 0 16px 36px rgba(34, 197, 94, 0.4);
+.field-group input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 4px;
+  border: 1px solid #c5c5c5;
+  font-size: 0.95rem;
 }
 
-.btn:disabled {
+.submit-wrapper {
+  margin-top: 12px;
+  text-align: center;
+}
+
+.submit-wrapper button {
+  min-width: 140px;
+  padding: 9px 18px;
+  border-radius: 20px;
+  border: 1px solid #555;
+  background: #ffffff;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: background 0.15s, transform 0.05s;
+}
+
+.submit-wrapper button:hover:not(:disabled) {
+  background: #f2f2f2;
+}
+
+.submit-wrapper button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.submit-wrapper button:disabled {
   opacity: 0.6;
   cursor: default;
-  box-shadow: none;
 }
 
-/* History header */
-.history__badge {
-  font-size: 11px;
-  padding: 3px 9px;
-  border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.7);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #9ca3af;
+/* === ERROS === */
+
+.error-box {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  border: 1px solid #e69a9a;
+  background: #ffecec;
+  font-size: 0.9rem;
 }
 
-.helper {
-  font-size: 12px;
-  color: #9ca3af;
+/* === HISTÓRICO === */
+
+.empty-state {
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.tx-list {
+  list-style: none;
+  padding: 0;
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-/* Transaction items */
-.tx {
-  margin-bottom: 10px;
-  border-radius: 12px;
-  padding: 10px 11px;
-  background: rgba(15, 23, 42, 0.92);
-  border: 1px solid rgba(148, 163, 184, 0.55);
-  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.7);
+.tx-item {
+  border: 2px solid #f3d1d1;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #ffffff;
 }
 
-.tx__tag {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 4px;
+.tx-line {
+  margin-bottom: 6px;
 }
 
-.tx--deposit .tx__tag {
-  color: #22c55e;
+.tx-amount {
+  font-weight: 700;
 }
 
-.tx--withdraw .tx__tag {
-  color: #f97316;
+.tx-amount-deposit {
+  color: #1a7f3c;
 }
 
-.amountBox {
-  display: inline-block;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: rgba(56, 189, 248, 0.12);
-  border: 1px solid rgba(56, 189, 248, 0.6);
-  font-size: 12px;
+.tx-amount-withdraw {
+  color: #c0392b;
 }
 
-/* Positive / negative balance */
-.balance--pos {
-  color: #22c55e;
+.tx-account {
+  font-family: "Courier New", monospace;
+  font-size: 0.9rem;
 }
 
-.balance--neg {
-  color: #f97316;
+.tx-balance {
+  font-size: 0.9rem;
 }
 
-/* Error box */
-.error {
-  margin-top: 10px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: rgba(220, 38, 38, 0.15);
-  border: 1px solid rgba(248, 113, 113, 0.6);
-  color: #fecaca;
-  font-size: 11px;
-  max-height: 120px;
-  overflow: auto;
-  white-space: pre-wrap;
+.tx-balance-value {
+  font-weight: 600;
 }
+
+
 
