@@ -1,0 +1,24 @@
+services:
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    environment:
+      - PORT=4000
+      # - DATABASE_PATH=/app/data/app.db
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./server/data:/app/data
+  web:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./web:/app
+    environment:
+      - VITE_API_URL=http://localhost:4000
+    command: sh -c "npm ci && npm run dev -- --host --port 5173"
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api

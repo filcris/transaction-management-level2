@@ -1,0 +1,14 @@
+﻿# deps & builds
+**/node_modules/
+**/dist/
+**/.vite/
+**/build/
+
+# local data
+server/data/
+*.db
+
+# local configs
+*.env
+.DS_Store
+Thumbs.db
